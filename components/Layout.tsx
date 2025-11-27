@@ -19,11 +19,16 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => 
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <header className="bg-teal-700 text-white p-4 shadow-md sticky top-0 z-50">
         <div className="container mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Ship size={28} />
-            <h1 className="text-xl font-bold tracking-tight">NavegaAmazonas</h1>
+          <div className="flex items-center space-x-3">
+            <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm border border-white/20">
+              <Ship size={24} className="text-teal-50" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight leading-none">NavegaAmazonas</h1>
+              <span className="text-[10px] text-teal-100 font-medium tracking-wide uppercase opacity-80 block">Controle Fluvial</span>
+            </div>
           </div>
-          <div className="text-xs opacity-80 hidden sm:block">
+          <div className="text-xs opacity-80 hidden sm:block font-medium">
             Manaus ↔ Tabatinga
           </div>
         </div>
@@ -33,13 +38,13 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => 
         {children}
       </main>
 
-      <nav className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 md:hidden z-50">
+      <nav className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 md:hidden z-50 pb-safe">
         <div className="flex justify-around items-center h-16">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${
+              className={`flex flex-col items-center justify-center w-full h-full space-y-1 active:scale-95 transition-transform ${
                 activeTab === tab.id ? 'text-teal-600' : 'text-slate-500'
               }`}
             >
@@ -58,7 +63,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => 
               onClick={() => onTabChange(tab.id)}
               className={`flex items-center space-x-3 w-full p-3 rounded-lg transition-colors ${
                 activeTab === tab.id 
-                  ? 'bg-teal-50 text-teal-700 font-medium' 
+                  ? 'bg-teal-50 text-teal-700 font-medium border border-teal-100' 
                   : 'text-slate-600 hover:bg-slate-50'
               }`}
             >
@@ -66,6 +71,14 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => 
               <span>{tab.label}</span>
             </button>
           ))}
+        </div>
+        
+        <div className="mt-auto p-4 bg-slate-50 rounded-lg border border-slate-100">
+          <p className="text-xs text-slate-500 text-center">
+            NavegaAmazonas v1.0
+            <br />
+            Operando Offline
+          </p>
         </div>
       </div>
     </div>

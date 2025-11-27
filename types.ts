@@ -32,6 +32,7 @@ export interface Schedule {
   direction: Direction;
   dayOfWeek: string; // "Segunda", "Terça", etc.
   expectedTime: string; // HH:mm
+  departurePort?: string; // Porto de saída em Manaus
 }
 
 export interface ArrivalLog {

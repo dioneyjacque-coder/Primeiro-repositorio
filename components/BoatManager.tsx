@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Boat, Schedule, Direction, Stop, Route } from '../types';
-import { Plus, Trash2, Save, Calendar, Search, Filter, MapPin, Check, X } from 'lucide-react';
+import { Plus, Trash2, Save, Calendar, Search, Filter, MapPin, Check, X, Anchor } from 'lucide-react';
 
 interface BoatManagerProps {
   boats: Boat[];
@@ -22,6 +22,7 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
   const [selectedRouteId, setSelectedRouteId] = useState(routes[0].id);
   const [selectedStop, setSelectedStop] = useState('');
   const [time, setTime] = useState('');
+  const [selectedPort, setSelectedPort] = useState('Manaus Moderna (Balsa Amarela)');
 
   // New Stop Form State
   const [isAddingNewStop, setIsAddingNewStop] = useState(false);
@@ -31,6 +32,18 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
   const [scheduleFilter, setScheduleFilter] = useState('');
 
   const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+
+  const manausPorts = [
+    'Manaus Moderna (Balsa Amarela)',
+    'Manaus Moderna (Balsa Vermelha)',
+    'Balsa Laranja (Terminal Ajato)',
+    'Porto do São Raimundo',
+    'Roadway (Porto de Manaus)',
+    'Porto da Panair',
+    'Porto do Ceasa',
+    'Porto Privatizado',
+    'Outro / Não Definido'
+  ];
 
   // Filter stops based on selected route
   const availableStops = stops.filter(s => s.routeIds.includes(selectedRouteId));
@@ -90,7 +103,8 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
       stopId: selectedStop,
       direction: selectedDirection,
       dayOfWeek: selectedDay,
-      expectedTime: time
+      expectedTime: time,
+      departurePort: selectedPort
     };
     setSchedules([...schedules, newSchedule]);
     setTime('');
@@ -190,6 +204,20 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
                 >
                   {routes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
+              </div>
+              
+              {/* Departure Port Selection */}
+              <div>
+                 <label className="block text-xs font-semibold text-slate-600 uppercase mb-1 flex items-center">
+                   <Anchor size={12} className="mr-1"/> Porto de Saída (Em Manaus)
+                 </label>
+                 <select 
+                    value={selectedPort}
+                    onChange={(e) => setSelectedPort(e.target.value)}
+                    className="w-full p-2 rounded border border-slate-300 bg-white text-sm"
+                 >
+                   {manausPorts.map(port => <option key={port} value={port}>{port}</option>)}
+                 </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -297,23 +325,31 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
                 <p className="text-sm text-slate-400">Nenhum horário cadastrado para esta lancha (com filtro atual).</p>
               ) : (
                 filteredSchedules.map(schedule => (
-                  <div key={schedule.id} className="flex justify-between items-center p-3 bg-white border border-slate-100 rounded shadow-sm text-sm">
-                    <div>
-                      <div className="font-bold text-slate-700">
-                        {stops.find(s => s.id === schedule.stopId)?.name} 
-                        <span className="font-normal text-slate-500 mx-1">•</span> 
-                        {schedule.expectedTime}
+                  <div key={schedule.id} className="flex flex-col p-3 bg-white border border-slate-100 rounded shadow-sm text-sm group">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-bold text-slate-700">
+                          {stops.find(s => s.id === schedule.stopId)?.name} 
+                          <span className="font-normal text-slate-500 mx-1">•</span> 
+                          {schedule.expectedTime}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {schedule.dayOfWeek} • {schedule.direction === Direction.UPSTREAM ? 'Subindo' : 'Descendo'}
+                        </div>
+                        {schedule.departurePort && (
+                           <div className="text-[10px] text-teal-600 mt-1 flex items-center">
+                              <Anchor size={10} className="mr-1" />
+                              Porto: {schedule.departurePort}
+                           </div>
+                        )}
                       </div>
-                      <div className="text-xs text-slate-500">
-                        {schedule.dayOfWeek} • {schedule.direction === Direction.UPSTREAM ? 'Subindo' : 'Descendo'}
-                      </div>
+                      <button 
+                        onClick={() => removeSchedule(schedule.id)}
+                        className="text-red-400 hover:text-red-600 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
-                    <button 
-                      onClick={() => removeSchedule(schedule.id)}
-                      className="text-red-400 hover:text-red-600"
-                    >
-                      <Trash2 size={14} />
-                    </button>
                   </div>
                 ))
               )}
