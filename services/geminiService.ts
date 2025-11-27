@@ -10,30 +10,42 @@ const getApiKey = (): string => {
   return key;
 };
 
-// 1. Fast AI Responses (Gemini 2.5 Flash Lite)
+// 1. Fast AI Responses (Gemini 2.5 Flash)
+// Changed from Flash Lite to Flash for better stability and instruction following
 export const askFastQuery = async (prompt: string, appContext: string = ""): Promise<string> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: getApiKey() });
+    const apiKey = getApiKey();
+    if (!apiKey) return "Erro: Chave de API não configurada.";
+
+    const ai = new GoogleGenAI({ apiKey });
     
+    // Prompt structure
     const fullPrompt = appContext 
-      ? `CONTEXTO DO APLICATIVO (Use estas informações para responder se relevante):\n${appContext}\n\nPERGUNTA DO USUÁRIO:\n${prompt}`
+      ? `DADOS DO APLICATIVO:\n${appContext}\n\nPERGUNTA DO USUÁRIO:\n${prompt}`
       : prompt;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-flash-lite-latest',
+      model: 'gemini-2.5-flash',
       contents: fullPrompt,
+      config: {
+        systemInstruction: "Você é o assistente oficial do app 'NavegaAmazonas'. Sua função é ajudar usuários a encontrar horários de lanchas, itinerários e informações sobre transporte fluvial no Amazonas. Use estritamente os dados fornecidos no contexto para responder. Se a informação não estiver nos dados, diga que não encontrou. Seja prestativo, educado e conciso.",
+      }
     });
-    return response.text || "Sem resposta.";
+    return response.text || "Sem resposta do assistente.";
   } catch (error) {
     console.error("Fast Query Error:", error);
-    return "Erro ao processar consulta rápida.";
+    // Return the actual error message to help debugging
+    return `Erro ao processar consulta: ${error instanceof Error ? error.message : "Erro desconhecido"}`;
   }
 };
 
 // 2. Maps Grounding (Gemini 2.5 Flash + Google Maps)
 export const askWithMaps = async (prompt: string, userLocation?: {lat: number, lng: number}, appContext: string = ""): Promise<{text: string, sources: Array<{uri: string, title: string}>}> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: getApiKey() });
+    const apiKey = getApiKey();
+    if (!apiKey) return { text: "Erro: Chave de API não configurada.", sources: [] };
+
+    const ai = new GoogleGenAI({ apiKey });
     
     const toolConfig: any = {};
     if (userLocation) {
@@ -46,7 +58,7 @@ export const askWithMaps = async (prompt: string, userLocation?: {lat: number, l
     }
 
     const fullPrompt = appContext 
-      ? `CONTEXTO DO APLICATIVO:\n${appContext}\n\nPERGUNTA DO USUÁRIO:\n${prompt}`
+      ? `CONTEXTO DO APP:\n${appContext}\n\nPERGUNTA:\n${prompt}`
       : prompt;
 
     const response = await ai.models.generateContent({
@@ -55,6 +67,7 @@ export const askWithMaps = async (prompt: string, userLocation?: {lat: number, l
       config: {
         tools: [{ googleMaps: {} }],
         toolConfig: toolConfig,
+        systemInstruction: "Você é um assistente de viagens fluviais. Use o Google Maps para encontrar distâncias e locais, mas priorize os dados de lanchas fornecidos no contexto do aplicativo."
       }
     });
 
@@ -80,14 +93,17 @@ export const askWithMaps = async (prompt: string, userLocation?: {lat: number, l
     };
   } catch (error) {
     console.error("Maps Query Error:", error);
-    return { text: "Erro ao consultar mapas.", sources: [] };
+    return { text: `Erro ao consultar mapas: ${error instanceof Error ? error.message : "Erro desconhecido"}`, sources: [] };
   }
 };
 
 // 3. Image Analysis (Gemini 3 Pro)
 export const analyzeScheduleImage = async (base64Image: string, promptText: string): Promise<string> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: getApiKey() });
+    const apiKey = getApiKey();
+    if (!apiKey) return "Erro: Chave de API não configurada.";
+
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: {
@@ -98,7 +114,7 @@ export const analyzeScheduleImage = async (base64Image: string, promptText: stri
               data: base64Image
             }
           },
-          { text: promptText || "Analise esta imagem de um horário de lancha e extraia os dados. Se possível, formate como JSON ou lista clara." }
+          { text: promptText || "Analise esta imagem de um horário de lancha e extraia os dados. Liste: Nome da Lancha, Horários, Dias de Saída e Destinos. Formate como texto claro." }
         ]
       }
     });
@@ -112,10 +128,13 @@ export const analyzeScheduleImage = async (base64Image: string, promptText: stri
 // 4. Thinking Mode (Gemini 3 Pro + Thinking Budget)
 export const askWithThinking = async (prompt: string, appContext: string = ""): Promise<string> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: getApiKey() });
+    const apiKey = getApiKey();
+    if (!apiKey) return "Erro: Chave de API não configurada.";
+
+    const ai = new GoogleGenAI({ apiKey });
     
     const fullPrompt = appContext 
-      ? `CONTEXTO COMPLETO DO SISTEMA:\n${appContext}\n\nTAREFA DO USUÁRIO:\n${prompt}`
+      ? `DADOS COMPLETOS DO SISTEMA:\n${appContext}\n\nPROBLEMA COMPLEXO DO USUÁRIO:\n${prompt}`
       : prompt;
 
     const response = await ai.models.generateContent({
@@ -135,7 +154,10 @@ export const askWithThinking = async (prompt: string, appContext: string = ""): 
 // 5. Audio Transcription (Gemini 2.5 Flash)
 export const transcribeAudio = async (base64Audio: string): Promise<string> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: getApiKey() });
+    const apiKey = getApiKey();
+    if (!apiKey) return "Erro: Chave de API não configurada.";
+
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: {
