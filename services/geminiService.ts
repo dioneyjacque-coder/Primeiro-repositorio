@@ -10,16 +10,24 @@ const getApiKey = (): string => {
   return key;
 };
 
+const handleGenAIError = (error: unknown): string => {
+  console.error("Gemini API Error:", error);
+  const msg = error instanceof Error ? error.message : String(error);
+  
+  if (msg.includes("400") || msg.includes("API key") || msg.includes("API_KEY_INVALID") || msg.includes("403")) {
+    return "Erro: Chave de API inválida ou não configurada. Por favor, configure sua chave de acesso clicando no ícone de chave.";
+  }
+  return `Erro ao processar consulta: ${msg}`;
+};
+
 // 1. Fast AI Responses (Gemini 2.5 Flash)
-// Changed from Flash Lite to Flash for better stability and instruction following
 export const askFastQuery = async (prompt: string, appContext: string = ""): Promise<string> => {
   try {
     const apiKey = getApiKey();
-    if (!apiKey) return "Erro: Chave de API não configurada.";
+    if (!apiKey) return "Erro: Chave de API não configurada no ambiente.";
 
     const ai = new GoogleGenAI({ apiKey });
     
-    // Prompt structure
     const fullPrompt = appContext 
       ? `DADOS DO APLICATIVO:\n${appContext}\n\nPERGUNTA DO USUÁRIO:\n${prompt}`
       : prompt;
@@ -33,9 +41,7 @@ export const askFastQuery = async (prompt: string, appContext: string = ""): Pro
     });
     return response.text || "Sem resposta do assistente.";
   } catch (error) {
-    console.error("Fast Query Error:", error);
-    // Return the actual error message to help debugging
-    return `Erro ao processar consulta: ${error instanceof Error ? error.message : "Erro desconhecido"}`;
+    return handleGenAIError(error);
   }
 };
 
@@ -81,7 +87,6 @@ export const askWithMaps = async (prompt: string, userLocation?: {lat: number, l
            sources.push({ uri: chunk.web.uri, title: chunk.web.title || "Link Web" });
         }
         if (chunk.maps?.uri) {
-           // Extract specific maps data if available
            sources.push({ uri: chunk.maps.uri, title: chunk.maps.title || "Google Maps" });
         }
       });
@@ -92,8 +97,7 @@ export const askWithMaps = async (prompt: string, userLocation?: {lat: number, l
       sources
     };
   } catch (error) {
-    console.error("Maps Query Error:", error);
-    return { text: `Erro ao consultar mapas: ${error instanceof Error ? error.message : "Erro desconhecido"}`, sources: [] };
+    return { text: handleGenAIError(error), sources: [] };
   }
 };
 
@@ -120,8 +124,7 @@ export const analyzeScheduleImage = async (base64Image: string, promptText: stri
     });
     return response.text || "Não consegui analisar a imagem.";
   } catch (error) {
-    console.error("Image Analysis Error:", error);
-    return "Erro ao analisar imagem.";
+    return handleGenAIError(error);
   }
 };
 
@@ -146,8 +149,7 @@ export const askWithThinking = async (prompt: string, appContext: string = ""): 
     });
     return response.text || "Sem resposta do modelo de pensamento.";
   } catch (error) {
-    console.error("Thinking Mode Error:", error);
-    return "Erro ao processar com modo de pensamento.";
+    return handleGenAIError(error);
   }
 };
 
@@ -177,7 +179,6 @@ export const transcribeAudio = async (base64Audio: string): Promise<string> => {
     });
     return response.text || "Falha na transcrição.";
   } catch (error) {
-    console.error("Transcription Error:", error);
-    return "Erro ao transcrever áudio.";
+    return handleGenAIError(error);
   }
 };

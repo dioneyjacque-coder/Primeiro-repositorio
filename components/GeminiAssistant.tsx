@@ -7,7 +7,7 @@ import {
   analyzeScheduleImage, 
   transcribeAudio 
 } from '../services/geminiService';
-import { Mic, Image as ImageIcon, Map as MapIcon, Zap, Send, BrainCircuit, Loader2, Search } from 'lucide-react';
+import { Mic, Image as ImageIcon, Map as MapIcon, Zap, Send, BrainCircuit, Loader2, Search, Settings, Key } from 'lucide-react';
 
 interface GeminiAssistantProps {
   boats: Boat[];
@@ -50,8 +50,12 @@ const GeminiAssistant: React.FC<GeminiAssistantProps> = ({ boats, schedules, log
       return `- [${date}] ${boat} chegou em ${stop} (${l.direction}). Obs: ${l.notes || 'Nenhuma'}`;
     }).join('\n');
 
+    const now = new Date().toLocaleString('pt-BR');
+
     return `
 === DADOS DO APLICATIVO NAVEGAAMAZONAS ===
+DATA/HORA ATUAL: ${now}
+
 LANCHAS CADASTRADAS:
 ${boatList || 'Nenhuma cadastrada'}
 
@@ -66,6 +70,21 @@ ${logsList || 'Nenhum registro recente'}
 
   const addMessage = (role: 'user' | 'model', text: string, groundingUrls?: any[]) => {
     setMessages(prev => [...prev, { id: crypto.randomUUID(), role, text, groundingUrls }]);
+  };
+
+  const handleApiKeyConfig = async () => {
+    // Cast window to any to avoid TypeScript conflict with global definitions of aistudio
+    const win = window as any;
+    if (win.aistudio?.openSelectKey) {
+      try {
+        await win.aistudio.openSelectKey();
+        alert("Chave de API atualizada! Tente sua consulta novamente.");
+      } catch (e) {
+        console.error("Erro ao selecionar chave:", e);
+      }
+    } else {
+      alert("Configuração de chave não disponível neste ambiente. Verifique suas variáveis de ambiente (.env).");
+    }
   };
 
   const handleSend = async () => {
@@ -87,7 +106,6 @@ ${logsList || 'Nenhum registro recente'}
       } else if (mode === 'maps') {
         let location = undefined;
         try {
-           // Short timeout for location to keep UI snappy
            const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
              navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 });
            });
@@ -104,6 +122,17 @@ ${logsList || 'Nenhum registro recente'}
       }
 
       addMessage('model', responseText, urls);
+      
+      // Check if response indicates an API Key error
+      if (responseText.includes("Chave de API inválida") || responseText.includes("não configurada") || responseText.includes("403") || responseText.includes("400")) {
+        // Automatically suggest fixing the key
+        setMessages(prev => [...prev, { 
+          id: 'api-error-help', 
+          role: 'model', 
+          text: 'Parece que há um problema com a Chave de API. Clique no botão abaixo para configurar.' 
+        }]);
+      }
+
     } catch (error) {
       addMessage('model', "Desculpe, ocorreu um erro ao processar sua solicitação.");
     } finally {
@@ -148,9 +177,6 @@ ${logsList || 'Nenhum registro recente'}
           addMessage('user', '[Áudio gravado]');
           setIsLoading(true);
           const transcription = await transcribeAudio(base64Audio);
-          
-          // Optionally auto-send transcription to AI
-          // For now, just show it
           addMessage('model', `Transcrição: "${transcription}"`);
           setIsLoading(false);
         };
@@ -181,15 +207,24 @@ ${logsList || 'Nenhum registro recente'}
   return (
     <div className="flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-100px)] md:pl-64">
       {/* Search Header for Chat History */}
-      <div className="bg-white px-4 py-2 border-b border-slate-100 flex items-center gap-2">
-        <Search size={16} className="text-slate-400" />
-        <input 
-          type="text" 
-          placeholder="Pesquisar na conversa..." 
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="bg-transparent border-none focus:outline-none text-sm w-full text-slate-600"
-        />
+      <div className="bg-white px-4 py-2 border-b border-slate-100 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 flex-1">
+          <Search size={16} className="text-slate-400" />
+          <input 
+            type="text" 
+            placeholder="Pesquisar na conversa..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="bg-transparent border-none focus:outline-none text-sm w-full text-slate-600"
+          />
+        </div>
+        <button 
+          onClick={handleApiKeyConfig}
+          className="text-slate-400 hover:text-teal-600 p-1.5 rounded-full hover:bg-slate-100 transition-colors"
+          title="Configurar Chave de API"
+        >
+          <Key size={16} />
+        </button>
       </div>
 
       <div className="bg-white border-b border-slate-200 p-4 flex gap-2 overflow-x-auto scrollbar-hide">
@@ -251,6 +286,16 @@ ${logsList || 'Nenhum registro recente'}
                     ))}
                   </ul>
                 </div>
+              )}
+
+              {/* Show button if message asks to configure key */}
+              {msg.text.includes("Configurar Chave") && (
+                <button 
+                  onClick={handleApiKeyConfig}
+                  className="mt-3 bg-teal-600 text-white text-xs px-3 py-2 rounded-md hover:bg-teal-700 transition flex items-center"
+                >
+                  <Key size={12} className="mr-1.5" /> Configurar Chave de Acesso
+                </button>
               )}
             </div>
           </div>
