@@ -86,12 +86,24 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
 
   const duplicateBoat = (boat: Boat, e: React.MouseEvent) => {
     e.stopPropagation();
+    const newBoatId = crypto.randomUUID();
     const newBoat: Boat = {
       ...boat,
-      id: crypto.randomUUID(),
+      id: newBoatId,
       name: `${boat.name} (Cópia)`
     };
+    
+    // Clone all schedules associated with the original boat
+    const boatSchedules = schedules.filter(s => s.boatId === boat.id);
+    const newSchedules = boatSchedules.map(s => ({
+      ...s,
+      id: crypto.randomUUID(),
+      boatId: newBoatId
+    }));
+
     setBoats([...boats, newBoat]);
+    setSchedules([...schedules, ...newSchedules]);
+    alert(`Lancha duplicada com ${newSchedules.length} horários copiados!`);
   };
 
   const removeBoat = (id: string) => {
@@ -264,7 +276,7 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
                 <button 
                   onClick={(e) => duplicateBoat(boat, e)}
                   className="text-slate-400 hover:text-blue-500 p-1.5 rounded-full hover:bg-blue-50 transition-colors"
-                  title="Copiar"
+                  title="Copiar Lancha e Horários"
                 >
                   <Copy size={14} />
                 </button>
