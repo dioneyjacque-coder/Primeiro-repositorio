@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Boat, Schedule, Direction, Stop, Route } from '../types';
-import { Plus, Trash2, Save, Calendar, Search, Filter, MapPin, Check, X, Anchor } from 'lucide-react';
+import { Plus, Trash2, Save, Calendar, Search, Filter, MapPin, Check, X, Anchor, Pencil, RotateCcw } from 'lucide-react';
 
 interface BoatManagerProps {
   boats: Boat[];
@@ -17,6 +17,7 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
   const [selectedBoatId, setSelectedBoatId] = useState<string | null>(null);
   
   // Schedule Form State
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [selectedDirection, setSelectedDirection] = useState<Direction>(Direction.UPSTREAM);
   const [selectedDay, setSelectedDay] = useState('Segunda');
   const [selectedRouteId, setSelectedRouteId] = useState(routes[0].id);
@@ -61,9 +62,11 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
   };
 
   const removeBoat = (id: string) => {
-    setBoats(boats.filter(b => b.id !== id));
-    setSchedules(schedules.filter(s => s.boatId !== id));
-    if (selectedBoatId === id) setSelectedBoatId(null);
+    if (window.confirm('Tem certeza? Isso apagará todos os horários desta lancha.')) {
+      setBoats(boats.filter(b => b.id !== id));
+      setSchedules(schedules.filter(s => s.boatId !== id));
+      if (selectedBoatId === id) setSelectedBoatId(null);
+    }
   };
 
   const handleStopChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -95,10 +98,10 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
     setIsAddingNewStop(false);
   };
 
-  const addSchedule = () => {
+  const handleSaveSchedule = () => {
     if (!selectedBoatId || !time || !selectedStop) return;
-    const newSchedule: Schedule = {
-      id: crypto.randomUUID(),
+
+    const scheduleData = {
       boatId: selectedBoatId,
       stopId: selectedStop,
       direction: selectedDirection,
@@ -106,12 +109,61 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
       expectedTime: time,
       departurePort: selectedPort
     };
-    setSchedules([...schedules, newSchedule]);
+
+    if (editingScheduleId) {
+      // Update existing
+      setSchedules(schedules.map(s => 
+        s.id === editingScheduleId ? { ...s, ...scheduleData } : s
+      ));
+      setEditingScheduleId(null);
+    } else {
+      // Create new
+      const newSchedule: Schedule = {
+        id: crypto.randomUUID(),
+        ...scheduleData
+      };
+      setSchedules([...schedules, newSchedule]);
+    }
+    
+    // Reset basic fields but keep Route/Boat for faster entry
     setTime('');
+    // Optional: Reset stop or keep it? Keeping context is usually better for data entry
+  };
+
+  const startEditing = (schedule: Schedule) => {
+    setEditingScheduleId(schedule.id);
+    setSelectedDirection(schedule.direction);
+    setSelectedDay(schedule.dayOfWeek);
+    setSelectedStop(schedule.stopId);
+    setTime(schedule.expectedTime);
+    if (schedule.departurePort) {
+      setSelectedPort(schedule.departurePort);
+    }
+
+    // Find which route this stop belongs to so the dropdown shows the correct list
+    const stop = stops.find(s => s.id === schedule.stopId);
+    if (stop && stop.routeIds.length > 0) {
+      // Prefer current selected route if it contains the stop, otherwise switch to first valid route
+      if (!stop.routeIds.includes(selectedRouteId)) {
+        setSelectedRouteId(stop.routeIds[0]);
+      }
+    }
+    
+    // Scroll to form (for mobile)
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEditing = () => {
+    setEditingScheduleId(null);
+    setTime('');
+    setSelectedStop('');
   };
 
   const removeSchedule = (id: string) => {
-    setSchedules(schedules.filter(s => s.id !== id));
+    if (window.confirm('Remover este horário?')) {
+      setSchedules(schedules.filter(s => s.id !== id));
+      if (editingScheduleId === id) cancelEditing();
+    }
   };
 
   const filteredSchedules = schedules
@@ -183,10 +235,11 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
         ) : (
           <div>
             <div className="mb-4 text-sm font-medium text-teal-800 bg-teal-100 inline-block px-3 py-1 rounded-full">
-              Editando: {boats.find(b => b.id === selectedBoatId)?.name}
+              {editingScheduleId ? 'Editando Horário de: ' : 'Gerenciando: '} 
+              {boats.find(b => b.id === selectedBoatId)?.name}
             </div>
 
-            <div className="space-y-4 bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6">
+            <div className={`space-y-4 p-4 rounded-lg border mb-6 transition-colors ${editingScheduleId ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
               
               {/* Route Selector to filter stops */}
               <div>
@@ -197,7 +250,7 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
                   value={selectedRouteId}
                   onChange={(e) => {
                     setSelectedRouteId(e.target.value);
-                    setSelectedStop(''); // Reset stop when route changes
+                    if (!editingScheduleId) setSelectedStop(''); // Only reset if not editing (or logic demands)
                     setIsAddingNewStop(false);
                   }}
                   className="w-full p-2 rounded border border-slate-300 bg-white"
@@ -297,13 +350,24 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
                 </div>
               </div>
 
-              <button 
-                onClick={addSchedule}
-                disabled={isAddingNewStop}
-                className="w-full flex justify-center items-center bg-teal-600 text-white py-2 rounded-md hover:bg-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Save size={16} className="mr-2" /> Salvar Horário
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={handleSaveSchedule}
+                  disabled={isAddingNewStop}
+                  className={`flex-1 flex justify-center items-center text-white py-2 rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed ${editingScheduleId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-teal-600 hover:bg-teal-700'}`}
+                >
+                  <Save size={16} className="mr-2" /> {editingScheduleId ? 'Atualizar Horário' : 'Salvar Horário'}
+                </button>
+                
+                {editingScheduleId && (
+                  <button 
+                    onClick={cancelEditing}
+                    className="flex items-center px-4 py-2 bg-slate-200 text-slate-600 rounded-md hover:bg-slate-300 transition"
+                  >
+                    <RotateCcw size={16} className="mr-1" /> Cancelar
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-between items-end mb-2">
@@ -325,7 +389,7 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
                 <p className="text-sm text-slate-400">Nenhum horário cadastrado para esta lancha (com filtro atual).</p>
               ) : (
                 filteredSchedules.map(schedule => (
-                  <div key={schedule.id} className="flex flex-col p-3 bg-white border border-slate-100 rounded shadow-sm text-sm group">
+                  <div key={schedule.id} className={`flex flex-col p-3 border rounded shadow-sm text-sm group ${editingScheduleId === schedule.id ? 'bg-amber-50 border-amber-300 ring-1 ring-amber-300' : 'bg-white border-slate-100'}`}>
                     <div className="flex justify-between items-start">
                       <div>
                         <div className="font-bold text-slate-700">
@@ -343,12 +407,22 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
                            </div>
                         )}
                       </div>
-                      <button 
-                        onClick={() => removeSchedule(schedule.id)}
-                        className="text-red-400 hover:text-red-600 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="flex space-x-1 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => startEditing(schedule)}
+                          className="text-amber-500 hover:text-amber-700 p-1"
+                          title="Editar"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button 
+                          onClick={() => removeSchedule(schedule.id)}
+                          className="text-red-400 hover:text-red-600 p-1"
+                          title="Remover"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
