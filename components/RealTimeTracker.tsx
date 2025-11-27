@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Boat, Stop, ArrivalLog, Direction, Route } from '../types';
-import { MapPin, Clock, Save, Check, X } from 'lucide-react';
+import { MapPin, Clock, Save, Check, X, Trash2 } from 'lucide-react';
 
 interface RealTimeTrackerProps {
   boats: Boat[];
@@ -76,6 +76,18 @@ const RealTimeTracker: React.FC<RealTimeTrackerProps> = ({ boats, stops, setStop
     setLogs([newLog, ...logs]);
     setNotes('');
     alert('Chegada registrada com sucesso!');
+  };
+
+  const removeLog = (id: string) => {
+    if (window.confirm('Tem certeza que deseja apagar este registro?')) {
+      setLogs(logs.filter(l => l.id !== id));
+    }
+  };
+
+  const clearAllLogs = () => {
+    if (window.confirm('ATENÇÃO: Tem certeza que deseja apagar TODO o histórico? Esta ação não pode ser desfeita.')) {
+      setLogs([]);
+    }
   };
 
   const getBoatName = (id: string) => boats.find(b => b.id === id)?.name || 'Desconhecida';
@@ -187,19 +199,38 @@ const RealTimeTracker: React.FC<RealTimeTrackerProps> = ({ boats, stops, setStop
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-        <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center">
-          <Clock className="mr-2 text-teal-600" /> Histórico Recente
-        </h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-lg font-bold text-slate-800 flex items-center">
+            <Clock className="mr-2 text-teal-600" /> Histórico Recente
+          </h2>
+          {logs.length > 0 && (
+            <button 
+              onClick={clearAllLogs}
+              className="text-xs text-red-500 hover:text-red-700 flex items-center border border-red-200 bg-red-50 px-3 py-1.5 rounded transition-colors"
+            >
+              <Trash2 size={14} className="mr-1" /> Limpar Tudo
+            </button>
+          )}
+        </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
           {logs.length === 0 ? (
             <p className="text-slate-400 italic">Nenhum registro encontrado.</p>
           ) : (
             logs.map(log => (
-              <div key={log.id} className="border-l-4 border-teal-500 bg-slate-50 p-4 rounded-r-lg">
+              <div key={log.id} className="border-l-4 border-teal-500 bg-slate-50 p-4 rounded-r-lg group relative">
                 <div className="flex justify-between items-start mb-1">
                   <h3 className="font-bold text-slate-800">{getBoatName(log.boatId)}</h3>
-                  <span className="text-xs text-slate-500">{new Date(log.timestamp).toLocaleDateString()}</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-slate-500">{new Date(log.timestamp).toLocaleDateString()}</span>
+                    <button 
+                      onClick={() => removeLog(log.id)}
+                      className="text-slate-400 hover:text-red-500 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                      title="Apagar este registro"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
                 <p className="text-sm text-slate-700">
                   Chegou em <span className="font-semibold">{getStopName(log.stopId)}</span>

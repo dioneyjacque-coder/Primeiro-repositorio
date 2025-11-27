@@ -44,6 +44,13 @@ const INITIAL_STOPS: Stop[] = [
 const INITIAL_BOATS: Boat[] = [
   { id: 'b1', name: 'Lancha Glória de Deus', capacity: 60, contact: '9299999999' },
   { id: 'b2', name: 'Expresso Cristalina', capacity: 80, contact: '9298888888' },
+  { id: 'b3', name: 'Cidade de Manaquiri', capacity: 0, contact: '' },
+  { id: 'b4', name: 'Soberana', capacity: 0, contact: '' },
+  { id: 'b5', name: 'Madame Crys', capacity: 0, contact: '' },
+  { id: 'b6', name: 'Ajato 2000', capacity: 0, contact: '' },
+  { id: 'b7', name: 'Crystal', capacity: 0, contact: '' },
+  { id: 'b8', name: 'Kedson Araujo', capacity: 0, contact: '' },
+  { id: 'b9', name: 'Lima de Abreu', capacity: 0, contact: '' },
 ];
 
 const App: React.FC = () => {
@@ -52,7 +59,20 @@ const App: React.FC = () => {
   // State initialization with Persistence
   const [boats, setBoats] = useState<Boat[]>(() => {
     const saved = localStorage.getItem('boats');
-    return saved ? JSON.parse(saved) : INITIAL_BOATS;
+    if (saved) {
+       const parsed = JSON.parse(saved);
+       // Merge strategy: Add initial boats that aren't in parsed based on name
+       const newBoats = [...parsed];
+       let changed = false;
+       INITIAL_BOATS.forEach(initBoat => {
+         if (!newBoats.find((b: Boat) => b.name === initBoat.name)) {
+           newBoats.push(initBoat);
+           changed = true;
+         }
+       });
+       return changed ? newBoats : parsed;
+    }
+    return INITIAL_BOATS;
   });
   
   const [schedules, setSchedules] = useState<Schedule[]>(() => {
