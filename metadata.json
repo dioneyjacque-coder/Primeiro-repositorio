@@ -1,0 +1,8 @@
+{
+  "name": "Navega Amazonas",
+  "description": "Gerenciamento de horários de transporte fluvial (lanchas) no Amazonas, com recursos de IA para otimização e rastreamento.",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation"
+  ]
+}
