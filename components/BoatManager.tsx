@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Boat, Schedule, Direction, Stop, Route } from '../types';
-import { Plus, Trash2, Save, Calendar, Search, Filter, MapPin, Check, X, Anchor, Pencil, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, Save, Calendar, Search, Filter, MapPin, Check, X, Anchor, Pencil, RotateCcw, Copy } from 'lucide-react';
 
 interface BoatManagerProps {
   boats: Boat[];
@@ -16,6 +16,9 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
   const [newBoatName, setNewBoatName] = useState('');
   const [selectedBoatId, setSelectedBoatId] = useState<string | null>(null);
   
+  // Boat Editing State
+  const [editingBoatId, setEditingBoatId] = useState<string | null>(null);
+
   // Schedule Form State
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [selectedDirection, setSelectedDirection] = useState<Direction>(Direction.UPSTREAM);
@@ -49,16 +52,46 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
   // Filter stops based on selected route
   const availableStops = stops.filter(s => s.routeIds.includes(selectedRouteId));
 
-  const addBoat = () => {
-    if (!newBoatName) return;
+  const handleSaveBoat = () => {
+    if (!newBoatName.trim()) return;
+
+    if (editingBoatId) {
+      // Update existing boat
+      setBoats(boats.map(b => b.id === editingBoatId ? { ...b, name: newBoatName } : b));
+      setEditingBoatId(null);
+      setNewBoatName('');
+    } else {
+      // Add new boat
+      const newBoat: Boat = {
+        id: crypto.randomUUID(),
+        name: newBoatName,
+        contact: '',
+        capacity: 0
+      };
+      setBoats([...boats, newBoat]);
+      setNewBoatName('');
+    }
+  };
+
+  const startEditingBoat = (boat: Boat, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setNewBoatName(boat.name);
+    setEditingBoatId(boat.id);
+  };
+
+  const cancelEditingBoat = () => {
+    setNewBoatName('');
+    setEditingBoatId(null);
+  };
+
+  const duplicateBoat = (boat: Boat, e: React.MouseEvent) => {
+    e.stopPropagation();
     const newBoat: Boat = {
+      ...boat,
       id: crypto.randomUUID(),
-      name: newBoatName,
-      contact: '',
-      capacity: 0
+      name: `${boat.name} (Cópia)`
     };
     setBoats([...boats, newBoat]);
-    setNewBoatName('');
   };
 
   const removeBoat = (id: string) => {
@@ -66,6 +99,7 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
       setBoats(boats.filter(b => b.id !== id));
       setSchedules(schedules.filter(s => s.boatId !== id));
       if (selectedBoatId === id) setSelectedBoatId(null);
+      if (editingBoatId === id) cancelEditingBoat();
     }
   };
 
@@ -180,42 +214,68 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
       {/* Boats Column */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
         <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
-          <Plus className="mr-2 text-teal-600" /> Cadastrar Lancha
+          <Plus className="mr-2 text-teal-600" /> {editingBoatId ? 'Editar Lancha' : 'Cadastrar Lancha'}
         </h2>
         <div className="flex gap-2 mb-6">
           <input
             type="text"
             value={newBoatName}
             onChange={(e) => setNewBoatName(e.target.value)}
-            placeholder="Nome da Lancha (ex: Glória de Deus)"
-            className="flex-1 p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:outline-none"
+            placeholder={editingBoatId ? "Editando nome..." : "Nome da Lancha (ex: Glória de Deus)"}
+            className={`flex-1 p-2 border rounded-md focus:ring-2 focus:ring-teal-500 focus:outline-none ${editingBoatId ? 'border-amber-400 bg-amber-50' : 'border-slate-300'}`}
           />
           <button 
-            onClick={addBoat}
-            className="bg-teal-600 text-white px-4 py-2 rounded-md hover:bg-teal-700 transition"
+            onClick={handleSaveBoat}
+            className={`text-white px-4 py-2 rounded-md transition flex items-center ${editingBoatId ? 'bg-amber-500 hover:bg-amber-600' : 'bg-teal-600 hover:bg-teal-700'}`}
           >
-            Adicionar
+            {editingBoatId ? <><Save size={16} className="mr-1"/> Salvar</> : 'Adicionar'}
           </button>
+          {editingBoatId && (
+            <button 
+              onClick={cancelEditingBoat}
+              className="px-3 py-2 bg-slate-200 text-slate-600 rounded-md hover:bg-slate-300 transition"
+              title="Cancelar Edição"
+            >
+              <X size={20} />
+            </button>
+          )}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-[500px] overflow-y-auto">
           {boats.map(boat => (
             <div 
               key={boat.id}
               onClick={() => setSelectedBoatId(boat.id)}
-              className={`p-3 rounded-lg border cursor-pointer flex justify-between items-center ${
+              className={`p-3 rounded-lg border cursor-pointer flex justify-between items-center group transition-colors ${
                 selectedBoatId === boat.id 
                   ? 'border-teal-500 bg-teal-50 ring-1 ring-teal-500' 
                   : 'border-slate-200 hover:bg-slate-50'
               }`}
             >
               <span className="font-medium text-slate-700">{boat.name}</span>
-              <button 
-                onClick={(e) => { e.stopPropagation(); removeBoat(boat.id); }}
-                className="text-red-400 hover:text-red-600 p-1"
-              >
-                <Trash2 size={16} />
-              </button>
+              <div className="flex items-center space-x-1">
+                <button 
+                  onClick={(e) => startEditingBoat(boat, e)}
+                  className="text-slate-400 hover:text-amber-500 p-1.5 rounded-full hover:bg-amber-50 transition-colors"
+                  title="Editar"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button 
+                  onClick={(e) => duplicateBoat(boat, e)}
+                  className="text-slate-400 hover:text-blue-500 p-1.5 rounded-full hover:bg-blue-50 transition-colors"
+                  title="Copiar"
+                >
+                  <Copy size={14} />
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); removeBoat(boat.id); }}
+                  className="text-slate-400 hover:text-red-500 p-1.5 rounded-full hover:bg-red-50 transition-colors"
+                  title="Apagar"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           ))}
           {boats.length === 0 && <p className="text-slate-400 text-sm italic">Nenhuma lancha cadastrada.</p>}
