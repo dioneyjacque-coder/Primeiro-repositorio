@@ -1,15 +1,7 @@
-import { GoogleGenAI, Type, Modality } from "@google/genai";
 
-// Helper to get API key safely
-const getApiKey = (): string => {
-  const key = process.env.API_KEY;
-  if (!key) {
-    console.error("API Key not found in environment");
-    return "";
-  }
-  return key;
-};
+import { GoogleGenAI, Type } from "@google/genai";
 
+// Helper to handle API errors and retry logic
 const handleGenAIError = (error: unknown): string => {
   console.error("Gemini API Error:", error);
   const msg = error instanceof Error ? error.message : String(error);
@@ -20,20 +12,18 @@ const handleGenAIError = (error: unknown): string => {
   return `Erro ao processar consulta: ${msg}`;
 };
 
-// 1. Fast AI Responses (Gemini 2.5 Flash)
+// 1. Fast AI Responses (Gemini 3 Flash)
+// Standard text task using gemini-3-flash-preview
 export const askFastQuery = async (prompt: string, appContext: string = ""): Promise<string> => {
   try {
-    const apiKey = getApiKey();
-    if (!apiKey) return "Erro: Chave de API não configurada no ambiente.";
-
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const fullPrompt = appContext 
       ? `DADOS DO APLICATIVO:\n${appContext}\n\nPERGUNTA DO USUÁRIO:\n${prompt}`
       : prompt;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: fullPrompt,
       config: {
         systemInstruction: "Você é o assistente oficial do app 'NavegaAmazonas'. Sua função é ajudar usuários a encontrar horários de lanchas, itinerários e informações sobre transporte fluvial no Amazonas. Use estritamente os dados fornecidos no contexto para responder. Se a informação não estiver nos dados, diga que não encontrou. Seja prestativo, educado e conciso.",
@@ -46,12 +36,10 @@ export const askFastQuery = async (prompt: string, appContext: string = ""): Pro
 };
 
 // 2. Maps Grounding (Gemini 2.5 Flash + Google Maps)
+// Maps grounding is only supported in Gemini 2.5 series models
 export const askWithMaps = async (prompt: string, userLocation?: {lat: number, lng: number}, appContext: string = ""): Promise<{text: string, sources: Array<{uri: string, title: string}>}> => {
   try {
-    const apiKey = getApiKey();
-    if (!apiKey) return { text: "Erro: Chave de API não configurada.", sources: [] };
-
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const toolConfig: any = {};
     if (userLocation) {
@@ -79,7 +67,7 @@ export const askWithMaps = async (prompt: string, userLocation?: {lat: number, l
 
     const sources: Array<{uri: string, title: string}> = [];
     
-    // Extract grounding chunks
+    // Extract grounding chunks for Maps
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
     if (chunks) {
       chunks.forEach((chunk: any) => {
@@ -102,12 +90,10 @@ export const askWithMaps = async (prompt: string, userLocation?: {lat: number, l
 };
 
 // 3. Image Analysis (Gemini 3 Pro)
+// High-quality image task using gemini-3-pro-preview
 export const analyzeScheduleImage = async (base64Image: string, promptText: string): Promise<string> => {
   try {
-    const apiKey = getApiKey();
-    if (!apiKey) return "Erro: Chave de API não configurada.";
-
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: {
@@ -129,12 +115,10 @@ export const analyzeScheduleImage = async (base64Image: string, promptText: stri
 };
 
 // 4. Thinking Mode (Gemini 3 Pro + Thinking Budget)
+// Advanced reasoning task using gemini-3-pro-preview
 export const askWithThinking = async (prompt: string, appContext: string = ""): Promise<string> => {
   try {
-    const apiKey = getApiKey();
-    if (!apiKey) return "Erro: Chave de API não configurada.";
-
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const fullPrompt = appContext 
       ? `DADOS COMPLETOS DO SISTEMA:\n${appContext}\n\nPROBLEMA COMPLEXO DO USUÁRIO:\n${prompt}`
@@ -153,28 +137,23 @@ export const askWithThinking = async (prompt: string, appContext: string = ""): 
   }
 };
 
-// 5. Audio Transcription (Gemini 2.5 Flash)
+// 5. Audio Transcription (Gemini 3 Flash)
+// Multi-modal task using gemini-3-flash-preview for audio-to-text
 export const transcribeAudio = async (base64Audio: string): Promise<string> => {
   try {
-    const apiKey = getApiKey();
-    if (!apiKey) return "Erro: Chave de API não configurada.";
-
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: {
         parts: [
           {
             inlineData: {
-              mimeType: 'audio/webm', // Or the mime type recorded
+              mimeType: 'audio/webm',
               data: base64Audio
             }
           },
           { text: "Transcreva este áudio sobre horários de lanchas. Responda apenas com a transcrição exata." }
         ]
-      },
-      config: {
-          responseModalities: [Modality.TEXT]
       }
     });
     return response.text || "Falha na transcrição.";
