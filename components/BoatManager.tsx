@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Boat, Schedule, Direction, Stop, Route, ArrivalLog } from '../types';
-import { Plus, Trash2, Save, Calendar, Search, Filter, MapPin, Check, X, Anchor, Pencil, RotateCcw, Copy, Activity, Clock } from 'lucide-react';
+import { Plus, Trash2, Save, Calendar, Search, Filter, MapPin, Check, X, Anchor, Pencil, RotateCcw, Copy, Activity, Clock, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 
 interface BoatManagerProps {
   boats: Boat[];
@@ -38,18 +38,6 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
   const [scheduleFilter, setScheduleFilter] = useState('');
 
   const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
-
-  const manausPorts = [
-    'Manaus Moderna (Balsa Amarela)',
-    'Manaus Moderna (Balsa Vermelha)',
-    'Balsa Laranja (Terminal Ajato)',
-    'Porto do São Raimundo',
-    'Roadway (Porto de Manaus)',
-    'Porto da Panair',
-    'Porto do Ceasa',
-    'Porto Privatizado',
-    'Outro / Não Definido'
-  ];
 
   // Filter stops based on selected route
   const availableStops = stops.filter(s => s.routeIds.includes(selectedRouteId));
@@ -102,7 +90,6 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
 
     setBoats([...boats, newBoat]);
     setSchedules([...schedules, ...newSchedules]);
-    alert(`Lancha duplicada com ${newSchedules.length} horários copiados!`);
   };
 
   const removeBoat = (id: string) => {
@@ -204,11 +191,10 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
 
   const filteredSchedules = schedules
     .filter(s => s.boatId === selectedBoatId)
-    .filter(s => {
-      if (!scheduleFilter) return true;
-      const stopName = stops.find(st => st.id === s.stopId)?.name.toLowerCase() || '';
-      return stopName.includes(scheduleFilter.toLowerCase()) || 
-             s.dayOfWeek.toLowerCase().includes(scheduleFilter.toLowerCase());
+    .sort((a, b) => {
+      const days = { 'Segunda': 1, 'Terça': 2, 'Quarta': 3, 'Quinta': 4, 'Sexta': 5, 'Sábado': 6, 'Domingo': 7 };
+      if (days[a.dayOfWeek] !== days[b.dayOfWeek]) return days[a.dayOfWeek] - days[b.dayOfWeek];
+      return a.expectedTime.localeCompare(b.expectedTime);
     });
 
   const boatLogs = logs
@@ -305,15 +291,26 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
                   </select>
                 </div>
                 <div>
+                   <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Sentido</label>
+                   <select 
+                     value={selectedDirection} 
+                     onChange={(e) => setSelectedDirection(e.target.value as Direction)} 
+                     className={`w-full p-2 rounded border font-bold text-sm bg-white ${selectedDirection === Direction.UPSTREAM ? 'border-teal-500 text-teal-700' : 'border-blue-500 text-blue-700'}`}
+                   >
+                     <option value={Direction.UPSTREAM}>Subindo (Interior)</option>
+                     <option value={Direction.DOWNSTREAM}>Descendo (Capital)</option>
+                   </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
                    <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Dia</label>
                    <select value={selectedDay} onChange={(e) => setSelectedDay(e.target.value)} className="w-full p-2 rounded border border-slate-300 bg-white text-sm">
                      {daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}
                    </select>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                 <div className="relative">
+                 <div className="col-span-1 relative">
                   <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Localidade</label>
                   {isAddingNewStop ? (
                     <div className="flex items-center space-x-1">
@@ -350,21 +347,27 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
                 <h3 className="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center">
                   <Clock size={14} className="mr-1 text-teal-600" /> Itinerário Previsto
                 </h3>
-                <div className="space-y-2 max-h-80 overflow-y-auto">
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
                   {filteredSchedules.length === 0 ? (
                     <p className="text-xs text-slate-400 italic p-2 bg-slate-50 rounded">Sem horários.</p>
                   ) : (
                     filteredSchedules.map(s => (
-                      <div key={s.id} className="p-2 border border-slate-100 rounded bg-white text-xs group hover:border-teal-200">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="font-bold text-slate-700">{stops.find(st => st.id === s.stopId)?.name}</div>
-                            <div className="text-slate-500">{s.dayOfWeek} às <span className="text-teal-600 font-bold">{s.expectedTime}</span></div>
-                          </div>
+                      <div key={s.id} className={`p-3 border-l-4 rounded bg-white text-xs group hover:shadow-sm transition-shadow ${s.direction === Direction.UPSTREAM ? 'border-l-teal-500 border-teal-50' : 'border-l-blue-500 border-blue-50'}`}>
+                        <div className="flex justify-between items-start mb-2">
+                          <span className={`px-2 py-0.5 rounded-full font-bold uppercase text-[9px] ${s.direction === Direction.UPSTREAM ? 'bg-teal-100 text-teal-700' : 'bg-blue-100 text-blue-700'}`}>
+                             {s.direction === Direction.UPSTREAM ? 'SUBINDO' : 'DESCENDO'}
+                          </span>
                           <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => startEditing(s)} className="text-amber-500 p-1"><Pencil size={12} /></button>
                             <button onClick={() => removeSchedule(s.id)} className="text-red-400 p-1"><Trash2 size={12} /></button>
                           </div>
+                        </div>
+                        <div className="flex justify-between items-end">
+                          <div>
+                            <div className="font-bold text-slate-800 text-sm">{stops.find(st => st.id === s.stopId)?.name}</div>
+                            <div className="text-slate-500 font-medium">{s.dayOfWeek}</div>
+                          </div>
+                          <div className="text-lg font-black text-slate-700">{s.expectedTime}</div>
                         </div>
                       </div>
                     ))
@@ -377,20 +380,27 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
                 <h3 className="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center">
                   <Activity size={14} className="mr-1 text-amber-600" /> Histórico Real
                 </h3>
-                <div className="space-y-2 max-h-80 overflow-y-auto">
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
                   {boatLogs.length === 0 ? (
                     <p className="text-xs text-slate-400 italic p-2 bg-slate-50 rounded">Sem registros reais ainda.</p>
                   ) : (
                     boatLogs.map(l => (
-                      <div key={l.id} className="p-2 border border-amber-100 rounded bg-amber-50/30 text-xs border-l-4 border-l-amber-400">
-                        <div className="flex justify-between font-bold text-slate-700">
-                           <span>{stops.find(st => st.id === l.stopId)?.name}</span>
-                           <span className="text-amber-700">{new Date(l.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                      <div key={l.id} className={`p-3 border-l-4 rounded bg-amber-50/20 text-xs border-slate-100 hover:border-amber-200 transition-colors ${l.direction === Direction.UPSTREAM ? 'border-l-teal-600' : 'border-l-blue-600'}`}>
+                        <div className="flex justify-between items-center mb-1">
+                           <span className="font-bold text-slate-800 text-sm">{stops.find(st => st.id === l.stopId)?.name}</span>
+                           <span className="text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded">{new Date(l.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                         </div>
-                        <div className="text-slate-500 text-[10px] mt-0.5">
-                          {new Date(l.timestamp).toLocaleDateString('pt-BR', {weekday: 'short', day: '2-digit', month: 'short'})}
+                        <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1">
+                          <div className="flex items-center font-bold">
+                             {l.direction === Direction.UPSTREAM ? (
+                               <><ArrowUpCircle size={12} className="mr-1 text-teal-600" /> <span className="text-teal-700 uppercase">SUBINDO</span></>
+                             ) : (
+                               <><ArrowDownCircle size={12} className="mr-1 text-blue-600" /> <span className="text-blue-700 uppercase">DESCENDO</span></>
+                             )}
+                          </div>
+                          <span>{new Date(l.timestamp).toLocaleDateString('pt-BR', {day: '2-digit', month: 'short'})}</span>
                         </div>
-                        {l.notes && <div className="mt-1 text-slate-600 bg-white/50 p-1 rounded italic truncate">{l.notes}</div>}
+                        {l.notes && <div className="mt-2 text-slate-600 bg-white/60 p-2 rounded italic text-[11px] border border-dashed border-slate-200">{l.notes}</div>}
                       </div>
                     ))
                   )}
