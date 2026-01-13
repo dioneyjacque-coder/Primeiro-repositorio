@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Boat, Stop, ArrivalLog, Direction, Route } from '../types';
-import { MapPin, Clock, Save, Check, X, Trash2 } from 'lucide-react';
+import { MapPin, Clock, Save, Check, X, Trash2, CalendarDays } from 'lucide-react';
 
 interface RealTimeTrackerProps {
   boats: Boat[];
@@ -40,15 +41,14 @@ const RealTimeTracker: React.FC<RealTimeTrackerProps> = ({ boats, stops, setStop
     if (!newStopName.trim()) return;
 
     // Use the first available route ID as a default, or 'solimoes' if available
-    // In a real app we might ask the user which route this stop belongs to
     const defaultRouteId = routes.find(r => r.id === 'solimoes')?.id || routes[0]?.id || 'unknown';
     
     const newStop: Stop = {
       id: crypto.randomUUID(),
       name: newStopName,
-      distanceFromManausKm: 0, // Default since we don't know
+      distanceFromManausKm: 0, 
       routeIds: [defaultRouteId],
-      mapX: 50, // Default to center for schematic map
+      mapX: 50, 
       mapY: 50
     };
 
@@ -92,6 +92,14 @@ const RealTimeTracker: React.FC<RealTimeTrackerProps> = ({ boats, stops, setStop
 
   const getBoatName = (id: string) => boats.find(b => b.id === id)?.name || 'Desconhecida';
   const getStopName = (id: string) => stops.find(s => s.id === id)?.name || 'Desconhecido';
+
+  const formatLogDateWithDay = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const weekday = date.toLocaleDateString('pt-BR', { weekday: 'long' });
+    const fullDate = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    // Capitalize first letter of weekday
+    return `${weekday.charAt(0).toUpperCase() + weekday.slice(1)}, ${fullDate}`;
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:pl-64">
@@ -219,10 +227,15 @@ const RealTimeTracker: React.FC<RealTimeTrackerProps> = ({ boats, stops, setStop
           ) : (
             logs.map(log => (
               <div key={log.id} className="border-l-4 border-teal-500 bg-slate-50 p-4 rounded-r-lg group relative">
-                <div className="flex justify-between items-start mb-1">
-                  <h3 className="font-bold text-slate-800">{getBoatName(log.boatId)}</h3>
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                     <h3 className="font-bold text-slate-800 text-base">{getBoatName(log.boatId)}</h3>
+                     <div className="flex items-center text-teal-700 font-semibold text-[11px] mt-0.5">
+                        <CalendarDays size={12} className="mr-1" />
+                        {formatLogDateWithDay(log.timestamp)}
+                     </div>
+                  </div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs text-slate-500">{new Date(log.timestamp).toLocaleDateString()}</span>
                     <button 
                       onClick={() => removeLog(log.id)}
                       className="text-slate-400 hover:text-red-500 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity p-1"
@@ -232,14 +245,18 @@ const RealTimeTracker: React.FC<RealTimeTrackerProps> = ({ boats, stops, setStop
                     </button>
                   </div>
                 </div>
-                <p className="text-sm text-slate-700">
-                  Chegou em <span className="font-semibold">{getStopName(log.stopId)}</span>
+                <p className="text-sm text-slate-700 mt-1">
+                  Chegou em <span className="font-bold text-teal-800">{getStopName(log.stopId)}</span>
                 </p>
-                <p className="text-xs text-slate-500 mt-1 uppercase tracking-wide">
-                  {log.direction === Direction.UPSTREAM ? 'Subindo' : 'Descendo'}
+                <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider font-bold">
+                  {log.direction === Direction.UPSTREAM ? (
+                    <span className="text-emerald-600">↑ Subindo para o Interior</span>
+                  ) : (
+                    <span className="text-blue-600">↓ Descendo para Manaus</span>
+                  )}
                 </p>
                 {log.notes && (
-                  <div className="mt-2 text-sm text-slate-600 bg-white p-2 rounded border border-slate-200">
+                  <div className="mt-2 text-sm text-slate-600 bg-white p-2 rounded border border-slate-200 border-dashed italic">
                     {log.notes}
                   </div>
                 )}

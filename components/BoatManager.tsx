@@ -201,6 +201,13 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
     .filter(l => l.boatId === selectedBoatId)
     .sort((a, b) => b.timestamp - a.timestamp);
 
+  const formatLogDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const weekday = date.toLocaleDateString('pt-BR', { weekday: 'short' });
+    const dayMonth = date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    return `${weekday.toUpperCase()}, ${dayMonth}`;
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:pl-64">
       {/* Boats Column */}
@@ -398,7 +405,7 @@ const BoatManager: React.FC<BoatManagerProps> = ({ boats, setBoats, schedules, s
                                <><ArrowDownCircle size={12} className="mr-1 text-blue-600" /> <span className="text-blue-700 uppercase">DESCENDO</span></>
                              )}
                           </div>
-                          <span>{new Date(l.timestamp).toLocaleDateString('pt-BR', {day: '2-digit', month: 'short'})}</span>
+                          <span className="font-semibold text-slate-600">{formatLogDate(l.timestamp)}</span>
                         </div>
                         {l.notes && <div className="mt-2 text-slate-600 bg-white/60 p-2 rounded italic text-[11px] border border-dashed border-slate-200">{l.notes}</div>}
                       </div>
